@@ -1,0 +1,1470 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Payment & Dispatch PWA — Admin & Role-Based Tracker</title>
+
+  <!-- iOS & Android PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Dispatch PWA" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter & Noto Sans Devanagari -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- SheetJS for Tally Excel (.xlsx/.xls) & CSV Import/Export -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'Noto Sans Devanagari', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans Devanagari', sans-serif;
+      padding-bottom: env(safe-area-inset-bottom);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .safe-top {
+      padding-top: env(safe-area-inset-top);
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+      border-radius: 8px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-20 sm:bottom-5 right-4 left-4 sm:left-auto z-50 flex flex-col gap-2 max-w-sm sm:w-full pointer-events-none"></div>
+
+  <!-- Top Header -->
+  <header class="bg-slate-900 text-white shadow-md sticky top-0 z-40 border-b border-slate-800 safe-top">
+    <div class="max-w-[1600px] mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2">
+      <!-- App Brand & PWA Status -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow shrink-0">
+          <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight">Payment & Dispatch PWA</h1>
+            <span id="pwa-badge" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              iOS & Android Ready
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400">30-Day Credit • Admin Control • Team Sharing</p>
+        </div>
+      </div>
+
+      <!-- Right Controls: Install PWA, Role Switcher, Cloud Auth -->
+      <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+        <button id="btn-install-pwa" onclick="triggerPwaInstall()" class="hidden items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-semibold transition shadow-sm">
+          <i data-lucide="download-cloud" class="w-3.5 h-3.5"></i>
+          <span>Install App</span>
+        </button>
+
+        <button onclick="openPwaGuideModal()" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold transition">
+          <i data-lucide="smartphone" class="w-3.5 h-3.5 text-sky-400"></i>
+          <span>iOS / Android Guide</span>
+        </button>
+
+        <div class="flex items-center bg-slate-800 rounded-xl border border-slate-700 px-1.5 py-0.5">
+          <span class="text-[10px] text-slate-400 px-1 hidden md:inline">View:</span>
+          <select id="view-as-select" onchange="switchSimulatedRole(this.value)" class="bg-slate-900 text-white text-[11px] font-semibold rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ADMIN">👑 Admin (Full Edit)</option>
+          </select>
+        </div>
+
+        <button onclick="openAuthModal()" id="auth-btn" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[11px] font-semibold transition shadow-sm">
+          <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+          <span id="auth-btn-label">Login</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Desktop / Tablet Navigation Tabs -->
+    <nav id="main-nav-tabs" class="max-w-[1600px] mx-auto px-3 sm:px-6 flex items-center gap-1 overflow-x-auto custom-scrollbar border-t border-slate-800/80 pt-1">
+      <!-- Tabs rendered dynamically -->
+    </nav>
+  </header>
+
+  <!-- Shared User Notice Banner -->
+  <div id="shared-user-banner" class="hidden bg-amber-50 border-b border-amber-200 px-3 sm:px-6 py-2">
+    <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-2 text-xs text-amber-950">
+      <div class="flex items-center gap-2">
+        <i data-lucide="lock" class="w-4 h-4 text-amber-600 shrink-0"></i>
+        <span>
+          <strong>Restricted Shared View:</strong> Aapko keval Admin dwara anumati diya gaya data dikh raha hai (<span id="shared-filter-desc" class="font-semibold underline"></span>).
+        </span>
+      </div>
+      <button onclick="switchSimulatedRole('ADMIN')" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-semibold transition">
+        Back to Admin
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-3 sm:px-6 py-4 sm:py-6">
+
+    <!-- Unauthorized Screen -->
+    <div id="unauthorized-screen" class="hidden max-w-md mx-auto my-10 bg-white rounded-2xl border border-rose-200 p-6 text-center shadow-sm">
+      <div class="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3">
+        <i data-lucide="shield-alert" class="w-7 h-7"></i>
+      </div>
+      <h2 class="text-lg font-bold text-slate-900">Access Restricted (अनुमति नहीं है)</h2>
+      <p class="text-xs text-slate-600 mt-1.5 mb-4">
+        Email <span id="unauth-email" class="font-semibold text-slate-900"></span> ko abhi is data ke liye permission nahi mili hai.
+      </p>
+      <div class="flex justify-center gap-2">
+        <button onclick="switchSimulatedRole('ADMIN')" class="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold">Admin Demo</button>
+        <button onclick="logoutFirebase()" class="px-3.5 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-semibold">Sign Out</button>
+      </div>
+    </div>
+
+    <!-- TAB 1: DASHBOARD -->
+    <section id="tab-dashboard" class="space-y-5">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base sm:text-lg font-bold text-slate-900">Payment & Dispatch Overview (डैशबोर्ड)</h2>
+          <p class="text-xs text-slate-500">30-Day Credit Rule • Normalized Bill Matching • Priority Call Queue</p>
+        </div>
+        <div id="admin-quick-actions" class="flex flex-wrap items-center gap-2">
+          <button onclick="openImportModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition">
+            <i data-lucide="upload-cloud" class="w-4 h-4"></i> Import Tally Excel/CSV
+          </button>
+          <button onclick="exportAllToExcel()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition">
+            <i data-lucide="download" class="w-4 h-4"></i> Export Excel (.xlsx)
+          </button>
+          <button onclick="setActiveTab('access')" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold shadow-sm transition">
+            <i data-lucide="share-2" class="w-4 h-4"></i> Share & Access
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div id="kpi-cards-grid" class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4"></div>
+
+      <!-- Ageing & Priority Queue -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <div>
+                <h3 class="text-sm font-bold text-slate-900">Ageing Slabs (बकाया अवधि)</h3>
+                <p class="text-xs text-slate-500">30-day due date ke baad overdue slabs</p>
+              </div>
+              <span class="p-2 rounded-xl bg-blue-50 text-blue-600"><i data-lucide="bar-chart-3" class="w-4 h-4"></i></span>
+            </div>
+            <div id="ageing-bars-container" class="space-y-3.5"></div>
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Credit Limit: <strong>30 Days</strong></span>
+            <button onclick="setActiveTab('outstanding')" class="text-blue-600 font-semibold hover:underline">All Bills →</button>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Today's Priority Call Queue (Courier / Tracker)</h3>
+              <p class="text-xs text-slate-500">Bahar ki partiyon ke liye aaj ke priority calls</p>
+            </div>
+            <button onclick="setActiveTab('followup')" class="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition">
+              Follow-up Sheet
+            </button>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500 bg-slate-50">
+                  <th class="py-2 px-3 rounded-tl-lg">Priority</th>
+                  <th class="py-2 px-3">Party Name</th>
+                  <th class="py-2 px-3">Mode / LR</th>
+                  <th class="py-2 px-3 text-right">Pending (₹)</th>
+                  <th class="py-2 px-3 text-right rounded-tr-lg">Remind</th>
+                </tr>
+              </thead>
+              <tbody id="dashboard-priority-tbody" class="divide-y divide-slate-100 text-xs"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: DAILY OUTSTANDING -->
+    <section id="tab-outstanding" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Daily Outstanding (बकाया बिल सूची)</h2>
+          <p class="text-xs text-slate-500">Normalized bill match (TRIM+UPPER) se Dispatch Through & LR auto-linked</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative flex-1 sm:flex-initial">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="out-search" oninput="renderOutstandingTable()" placeholder="Search Party, Bill, LR..." class="w-full sm:w-56 pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <select id="out-status-filter" onchange="renderOutstandingTable()" class="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">All Status</option>
+            <option value="Overdue">🔴 Overdue (>30d)</option>
+            <option value="Due Soon">🟡 Due Soon (≤5d)</option>
+            <option value="Not Due">🟢 Not Due</option>
+          </select>
+          <select id="out-dispatch-filter" onchange="renderOutstandingTable()" class="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">All Dispatch</option>
+          </select>
+          <button id="btn-add-bill" onclick="openAddBillModal()" class="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Bill
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar max-h-[620px]">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-slate-900 text-white text-[11px] font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-3">Bill Date</th>
+                <th class="py-3 px-3">Bill No.</th>
+                <th class="py-3 px-3">Party Name</th>
+                <th class="py-3 px-3 text-right">Pending (₹)</th>
+                <th class="py-3 px-3">Dispatch Through</th>
+                <th class="py-3 px-3">LR / Tracking</th>
+                <th class="py-3 px-3">Due (+30d)</th>
+                <th class="py-3 px-3 text-center">Overdue</th>
+                <th class="py-3 px-3">Status</th>
+                <th class="py-3 px-3">Ageing</th>
+                <th class="py-3 px-3 text-center admin-only-col">Action</th>
+              </tr>
+            </thead>
+            <tbody id="outstanding-tbody" class="divide-y divide-slate-100 text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: SELF FOLLOW-UP -->
+    <section id="tab-followup" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Self Follow-up (Outside Parties: Courier / Tracker)</h2>
+          <p class="text-xs text-slate-500">Priority Call Queue (`P1`–`P3`, `Cleared`) • One-click WhatsApp Reminder</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="relative flex-1 sm:flex-initial">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="fu-search" oninput="renderFollowupTable()" placeholder="Search Party or LR..." class="w-full sm:w-52 pl-9 pr-3 py-2 text-xs border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <select id="fu-priority-filter" onchange="renderFollowupTable()" class="px-3 py-2 text-xs border border-slate-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">All Priorities</option>
+            <option value="P1">🔴 P1 (Call Today + Overdue)</option>
+            <option value="P2">🟡 P2 (Call Today)</option>
+            <option value="P3">🔵 P3 (Upcoming / In Transit)</option>
+            <option value="CLEARED">🟢 Cleared / Paid</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar max-h-[620px]">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-slate-900 text-white text-[11px] font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-3">Priority</th>
+                <th class="py-3 px-3">Party Name</th>
+                <th class="py-3 px-3 text-right">Pending (₹)</th>
+                <th class="py-3 px-3">Mode & LR No.</th>
+                <th class="py-3 px-3 text-center">Max Overdue</th>
+                <th class="py-3 px-3">Delivery</th>
+                <th class="py-3 px-3">Party Response / Remarks</th>
+                <th class="py-3 px-3">Next Call</th>
+                <th class="py-3 px-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="followup-tbody" class="divide-y divide-slate-100 text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: PERSON SUMMARY -->
+    <section id="tab-person" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <h2 class="text-base font-bold text-slate-900">Dispatch Person & Mode Summary (व्यक्ति / मोड अनुसार रिपोर्ट)</h2>
+        <p class="text-xs text-slate-500">Har Salesperson ya Courier/Tracker mode ke total aur overdue bills ka breakdown</p>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead class="bg-slate-900 text-white text-[11px] font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-4">Dispatch Through</th>
+                <th class="py-3 px-4">Type</th>
+                <th class="py-3 px-4 text-center">Bills</th>
+                <th class="py-3 px-4 text-right">Total Pending (₹)</th>
+                <th class="py-3 px-4 text-center">Overdue Bills</th>
+                <th class="py-3 px-4 text-right">Overdue Amt (₹)</th>
+                <th class="py-3 px-4 text-right">Overdue %</th>
+              </tr>
+            </thead>
+            <tbody id="person-summary-tbody" class="divide-y divide-slate-100 text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: SALES REGISTER (ADMIN ONLY) -->
+    <section id="tab-sales" class="hidden space-y-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Sales Dispatch Register (Master Lookup)</h2>
+          <p class="text-xs text-slate-500">Tally Sales Register se imported dispatch details</p>
+        </div>
+        <button id="btn-import-sales-tab" onclick="openImportModal()" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Upload Sales File
+        </button>
+      </div>
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar max-h-[560px]">
+          <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-slate-900 text-white text-[11px] font-semibold uppercase tracking-wider">
+              <tr>
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Bill No.</th>
+                <th class="py-3 px-4">Party Name</th>
+                <th class="py-3 px-4">Dispatch Through</th>
+                <th class="py-3 px-4">LR / Tracking</th>
+                <th class="py-3 px-4 text-right">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="sales-tbody" class="divide-y divide-slate-100 text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: ADMIN ACCESS & SHARE MANAGER (ADMIN ONLY) -->
+    <section id="tab-access" class="hidden space-y-5">
+      <div class="bg-gradient-to-r from-slate-900 to-indigo-950 text-white p-5 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 text-[11px] font-semibold mb-1.5">
+            <i data-lucide="crown" class="w-3.5 h-3.5"></i> Admin Full Control
+          </span>
+          <h2 class="text-lg font-bold">Role & Party Visibility Sharing (एडिट कंट्रोल और शेयरिंग)</h2>
+          <p class="text-xs text-slate-300 mt-0.5">
+            Edit ka poora hak keval Admin ke paas hai. Har team member ko keval uske assigned bills/modes hi dikhenge.
+          </p>
+        </div>
+        <div class="bg-white/10 border border-white/15 rounded-xl p-3 text-xs w-full md:w-80">
+          <p class="text-slate-300 text-[11px]">Portal Link:</p>
+          <div class="flex items-center gap-1.5 mt-1">
+            <input type="text" id="share-url-input" readonly value="https://payment-dispatch-pwa.web.app" class="bg-slate-950/60 text-white px-2.5 py-1.5 rounded-lg text-[11px] w-full border border-white/10">
+            <button onclick="copyShareUrl()" class="px-2.5 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-400 text-white font-semibold shrink-0">Copy</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Grant Access Form -->
+        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 space-y-3 text-xs">
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="user-plus" class="w-4 h-4 text-blue-600"></i> Share Data with Team Member
+          </h3>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Member Name (नाम)</label>
+            <input type="text" id="share-name" placeholder="e.g., Ramesh Sharma" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Login Email (ईमेल)</label>
+            <input type="email" id="share-email" placeholder="e.g., ramesh@company.com" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Edit Permission</label>
+            <select id="share-role-type" class="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white">
+              <option value="VIEW_ONLY">🔒 View Only (Sirf dekh sakega)</option>
+              <option value="REMARK_ONLY">✍️ Remark Only (Sirf call remarks likh sakega)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block font-semibold text-slate-700 mb-1">Data Visibility Scope (कौन-सा डेटा दिखेगा)</label>
+            <select id="share-data-scope" onchange="toggleDispatchCheckboxList()" class="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white">
+              <option value="SPECIFIC_DISPATCH">🎯 Specific Dispatch Through / Salesperson</option>
+              <option value="COURIER_ONLY">📦 Only Outside Parties (Courier / Tracker)</option>
+              <option value="ALL_DATA">🌐 All Bills</option>
+            </select>
+          </div>
+
+          <div id="dispatch-checkbox-container" class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+            <p class="font-semibold text-slate-700 text-[11px]">Select Dispatch Through / Party Group:</p>
+            <div id="dispatch-checkboxes" class="space-y-1 max-h-32 overflow-y-auto"></div>
+          </div>
+
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 grid grid-cols-2 gap-2">
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-tab-dashboard" checked class="rounded text-blue-600"> Dashboard</label>
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-tab-outstanding" checked class="rounded text-blue-600"> Outstanding</label>
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-tab-followup" checked class="rounded text-blue-600"> Follow-up</label>
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="perm-tab-person" checked class="rounded text-blue-600"> Person Summary</label>
+            <label class="flex items-center gap-1.5 cursor-pointer col-span-2 pt-1 border-t border-slate-200"><input type="checkbox" id="perm-col-amount" checked class="rounded text-blue-600"> Show Pending Amount (₹)</label>
+            <label class="flex items-center gap-1.5 cursor-pointer col-span-2"><input type="checkbox" id="perm-col-remarks" checked class="rounded text-blue-600"> Show Call Remarks</label>
+          </div>
+
+          <button onclick="saveSharedUser()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm transition">
+            Save & Share Access
+          </button>
+        </div>
+
+        <!-- Shared Users List -->
+        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+          <h3 class="text-sm font-bold text-slate-900 mb-3">Shared Users List (शेयर किए गए उपयोगकर्ता)</h3>
+          <div id="shared-users-list" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: TALLY IMPORT -->
+  <div id="import-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-xl w-full overflow-hidden">
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2"><i data-lucide="file-spreadsheet" class="w-4 h-4 text-blue-400"></i> Import Tally Excel / CSV</h3>
+        <button onclick="closeModal('import-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="p-5 space-y-4 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 space-y-2">
+            <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-bold text-[10px]">RECEIVABLES</span>
+            <p class="font-bold text-slate-900">Outstanding Bills (.xlsx/.csv)</p>
+            <input type="file" id="file-outstanding" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event, 'OUTSTANDING')" class="w-full text-[11px] file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:bg-blue-600 file:text-white file:font-semibold">
+          </div>
+          <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2">
+            <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 font-bold text-[10px]">SALES REGISTER</span>
+            <p class="font-bold text-slate-900">Dispatch & LR (.xlsx/.csv)</p>
+            <input type="file" id="file-sales" accept=".xlsx,.xls,.csv" onchange="handleExcelUpload(event, 'SALES')" class="w-full text-[11px] file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-600 file:text-white file:font-semibold">
+          </div>
+        </div>
+        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+          <span class="text-slate-500">Test with Indian business sample data:</span>
+          <button onclick="resetToSampleData()" class="px-3 py-1.5 rounded-xl bg-slate-800 text-white font-semibold">Load Sample Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD SINGLE BILL -->
+  <div id="add-bill-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm">Add Outstanding Bill</h3>
+        <button onclick="closeModal('add-bill-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="p-5 space-y-3 text-xs">
+        <div><label class="block font-semibold mb-1">Bill Date</label><input type="date" id="new-bill-date" class="w-full px-3 py-2 border border-slate-300 rounded-xl"></div>
+        <div><label class="block font-semibold mb-1">Bill No.</label><input type="text" id="new-bill-no" placeholder="INV-2026-110" class="w-full px-3 py-2 border border-slate-300 rounded-xl"></div>
+        <div><label class="block font-semibold mb-1">Party Name</label><input type="text" id="new-bill-party" placeholder="Jaipur Traders" class="w-full px-3 py-2 border border-slate-300 rounded-xl"></div>
+        <div><label class="block font-semibold mb-1">Pending Amount (₹)</label><input type="number" id="new-bill-amount" placeholder="52000" class="w-full px-3 py-2 border border-slate-300 rounded-xl"></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block font-semibold mb-1">Dispatch Through</label><input type="text" id="new-bill-dispatch" placeholder="Courier (DTDC)" class="w-full px-3 py-2 border border-slate-300 rounded-xl"></div>
+          <div><label class="block font-semibold mb-1">LR / Tracking</label><input type="text" id="new-bill-lr" placeholder="DTDC-112233" class="w-full px-3 py-2 border border-slate-300 rounded-xl"></div>
+        </div>
+        <button onclick="saveSingleBill()" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold">Save Bill</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AUTH -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm">Cloud Account & Admin Login</h3>
+        <button onclick="closeModal('auth-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="p-5 space-y-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+          <p>Active Account: <strong id="current-user-email-display">Admin Demo</strong></p>
+          <p class="text-[11px] text-slate-500 mt-0.5">Session ID: <span id="current-user-uid-display" class="font-mono">local-pwa</span></p>
+        </div>
+        <input type="email" id="login-email" placeholder="Email address" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+        <input type="password" id="login-password" placeholder="Password (min 6 chars)" class="w-full px-3 py-2 border border-slate-300 rounded-xl">
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="handleEmailAuth('signin')" class="py-2 rounded-xl bg-blue-600 text-white font-semibold">Sign In</button>
+          <button onclick="handleEmailAuth('signup')" class="py-2 rounded-xl bg-slate-800 text-white font-semibold">Register Admin</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: iOS & ANDROID PWA GUIDE -->
+  <div id="pwa-guide-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
+      <div class="px-5 py-3.5 bg-slate-900 text-white flex items-center justify-between">
+        <h3 class="font-bold text-sm flex items-center gap-2"><i data-lucide="smartphone" class="w-4 h-4 text-sky-400"></i> Install on iPhone (iOS) & Android</h3>
+        <button onclick="closeModal('pwa-guide-modal')" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="p-5 space-y-4 text-xs leading-relaxed">
+        <div class="p-3.5 rounded-xl bg-sky-50 border border-sky-200">
+          <p class="font-bold text-sky-950 mb-1">🍎 iPhone (Safari) — Home Screen App:</p>
+          <ol class="list-decimal pl-4 space-y-1 text-sky-900">
+            <li>Is page ko <strong>Safari</strong> mein open karein (hosted link ya local file).</li>
+            <li>Neeche <strong>Share</strong> icon (box with arrow) par tap karein.</li>
+            <li><strong>Add to Home Screen</strong> chunein aur <strong>Add</strong> tap karein.</li>
+          </ol>
+        </div>
+        <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200">
+          <p class="font-bold text-emerald-950 mb-1">🤖 Android (Chrome / Brave) — Install PWA:</p>
+          <ol class="list-decimal pl-4 space-y-1 text-emerald-900">
+            <li>Top-right <strong>⋮ (Three Dots)</strong> menu par tap karein.</li>
+            <li><strong>Install app</strong> ya <strong>Add to Home screen</strong> chunein.</li>
+            <li>App icon home screen par aa jayega aur full-screen chalega.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PWA Manifest & Service Worker Registration + App Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- 0. DYNAMIC PWA MANIFEST & SERVICE WORKER SETUP ---
+    function setupPwaManifestAndSw() {
+      try {
+        const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#0f172a"/><path d="M52 64h88v20H52zm0 34h64v20H52zm0 34h88v20H52z" fill="#3b82f6"/><circle cx="144" cy="144" r="24" fill="#10b981"/><path d="M135 144l6 6 12-12" stroke="#fff" stroke-width="5" fill="none" stroke-linecap="round"/></svg>`;
+        const iconUrl = `data:image/svg+xml;base64,${btoa(iconSvg)}`;
+
+        // Apple touch icon link
+        const appleIcon = document.createElement('link');
+        appleIcon.rel = 'apple-touch-icon';
+        appleIcon.href = iconUrl;
+        document.head.appendChild(appleIcon);
+
+        // Web App Manifest blob
+        const manifestObj = {
+          name: "Payment & Dispatch Follow-up PWA",
+          short_name: "Dispatch PWA",
+          start_url: "./",
+          display: "standalone",
+          background_color: "#0f172a",
+          theme_color: "#0f172a",
+          orientation: "portrait-primary",
+          icons: [
+            { src: iconUrl, sizes: "192x192", type: "image/svg+xml", purpose: "any maskable" },
+            { src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+          ]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: "application/manifest+json" });
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = URL.createObjectURL(manifestBlob);
+        document.head.appendChild(manifestLink);
+
+        // Service Worker via Blob (works on secure https / localhost contexts)
+        if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+          const swCode = `
+            const CACHE_NAME = 'dispatch-pwa-v1';
+            self.addEventListener('install', (e) => {
+              e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(['./']).catch(() => {})));
+              self.skipWaiting();
+            });
+            self.addEventListener('activate', (e) => {
+              e.waitUntil(self.clients.claim());
+            });
+            self.addEventListener('fetch', (e) => {
+              if (e.request.method !== 'GET') return;
+              e.respondWith(
+                fetch(e.request).catch(() => caches.match(e.request))
+              );
+            });
+          `;
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+        }
+      } catch (err) {
+        console.warn('PWA setup fallback:', err);
+      }
+    }
+
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('btn-install-pwa');
+      if (btn) btn.classList.remove('hidden');
+      if (btn) btn.classList.add('inline-flex');
+    });
+
+    window.triggerPwaInstall = async function() {
+      if (!deferredPrompt) {
+        openPwaGuideModal();
+        return;
+      }
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      document.getElementById('btn-install-pwa').classList.add('hidden');
+      showToast(outcome === 'accepted' ? 'PWA App installed!' : 'Install cancelled', 'info');
+    };
+
+    // --- 1. SAMPLE INDIAN ACCOUNTING DATA ---
+    const TODAY_STR = new Date().toISOString().split('T')[0];
+    function addDays(baseStr, days) {
+      const d = new Date(baseStr);
+      d.setDate(d.getDate() + days);
+      return d.toISOString().split('T')[0];
+    }
+
+    const DEFAULT_SALES = [
+      { billDate: addDays(TODAY_STR, -46), billNo: 'INV-2026-201', partyName: 'Shree Balaji Traders, Kota', dispatchThrough: 'Courier (DTDC)', lrNo: 'DTDC-90812', amount: 78500 },
+      { billDate: addDays(TODAY_STR, -39), billNo: 'INV-2026-202', partyName: 'Marwar Mill Store, Jodhpur', dispatchThrough: 'Tracker (SafeExpress)', lrNo: 'SFX-44190', amount: 134000 },
+      { billDate: addDays(TODAY_STR, -34), billNo: 'INV-2026-203', partyName: 'Pinkcity Hardware, Jaipur', dispatchThrough: 'Ramesh Sharma (Sales)', lrNo: 'Local-08', amount: 62000 },
+      { billDate: addDays(TODAY_STR, -27), billNo: 'INV-2026-204', partyName: 'Mewar Enterprises, Udaipur', dispatchThrough: 'Courier (BlueDart)', lrNo: 'BD-66210', amount: 91000 },
+      { billDate: addDays(TODAY_STR, -72), billNo: 'INV-2026-185', partyName: 'Bikaner Agro & Co., Bikaner', dispatchThrough: 'Tracker (VRL)', lrNo: 'VRL-77821', amount: 185000 }
+    ];
+
+    const DEFAULT_OUTSTANDING = [
+      { id: 'o1', billDate: addDays(TODAY_STR, -46), billNo: 'INV-2026-201', partyName: 'Shree Balaji Traders, Kota', amount: 78500 },
+      { id: 'o2', billDate: addDays(TODAY_STR, -39), billNo: 'INV-2026-202', partyName: 'Marwar Mill Store, Jodhpur', amount: 134000 },
+      { id: 'o3', billDate: addDays(TODAY_STR, -34), billNo: 'INV-2026-203', partyName: 'Pinkcity Hardware, Jaipur', amount: 62000 },
+      { id: 'o4', billDate: addDays(TODAY_STR, -27), billNo: 'INV-2026-204', partyName: 'Mewar Enterprises, Udaipur', amount: 91000 },
+      { id: 'o5', billDate: addDays(TODAY_STR, -72), billNo: 'INV-2026-185', partyName: 'Bikaner Agro & Co., Bikaner', amount: 185000 }
+    ];
+
+    const DEFAULT_FOLLOWUPS = {
+      'Shree Balaji Traders, Kota': {
+        deliveryStatus: 'Delivered',
+        lastCallDate: addDays(TODAY_STR, -1),
+        response: 'POD mil gayi hai, aaj shaam tak NEFT/RTGS karenge.',
+        nextFollowupDate: TODAY_STR
+      },
+      'Marwar Mill Store, Jodhpur': {
+        deliveryStatus: 'Delayed / Issue',
+        lastCallDate: addDays(TODAY_STR, -2),
+        response: 'Tracker par delivery pending dikh rahi hai, LR bheji gayi.',
+        nextFollowupDate: TODAY_STR
+      },
+      'Bikaner Agro & Co., Bikaner': {
+        deliveryStatus: 'Delivered',
+        lastCallDate: addDays(TODAY_STR, -3),
+        response: 'Part payment 1 lakh kal tak confirm ki hai.',
+        nextFollowupDate: TODAY_STR
+      }
+    };
+
+    const DEFAULT_SHARED_USERS = [
+      {
+        id: 'u_ramesh',
+        name: 'Ramesh Sharma (Sales)',
+        email: 'ramesh@company.com',
+        roleType: 'VIEW_ONLY',
+        scope: 'SPECIFIC_DISPATCH',
+        allowedDispatches: ['Ramesh Sharma (Sales)'],
+        tabs: { dashboard: true, outstanding: true, followup: false, person: false },
+        showAmount: true,
+        showRemarks: false
+      },
+      {
+        id: 'u_dispatch',
+        name: 'Courier / Dispatch Team',
+        email: 'dispatch@company.com',
+        roleType: 'REMARK_ONLY',
+        scope: 'COURIER_ONLY',
+        allowedDispatches: [],
+        tabs: { dashboard: true, outstanding: true, followup: true, person: false },
+        showAmount: false,
+        showRemarks: true
+      }
+    ];
+
+    window.appState = {
+      adminEmail: 'admin@company.com',
+      salesData: [...DEFAULT_SALES],
+      outstandingData: [...DEFAULT_OUTSTANDING],
+      followupNotes: { ...DEFAULT_FOLLOWUPS },
+      sharedUsers: [...DEFAULT_SHARED_USERS],
+      activeTab: 'dashboard',
+      simulatedRole: 'ADMIN',
+      firebaseUser: null,
+      db: null,
+      auth: null,
+      appId: typeof __app_id !== 'undefined' ? __app_id : 'dispatch-pwa-app'
+    };
+
+    // --- 2. CLOUD SYNC (FIRESTORE) ---
+    async function initCloud() {
+      try {
+        if (typeof __firebase_config === 'undefined') {
+          renderAll();
+          return;
+        }
+        const cfg = JSON.parse(__firebase_config);
+        const app = initializeApp(cfg);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        window.appState.auth = auth;
+        window.appState.db = db;
+
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+
+        onAuthStateChanged(auth, (user) => {
+          window.appState.firebaseUser = user;
+          if (user) {
+            document.getElementById('current-user-uid-display').textContent = user.uid;
+            if (user.email) {
+              document.getElementById('current-user-email-display').textContent = user.email;
+              document.getElementById('auth-btn-label').textContent = user.email.split('@')[0];
+            }
+            listenCloudState();
+          }
+        });
+      } catch (e) {
+        console.warn('Cloud init fallback:', e);
+        renderAll();
+      }
+    }
+
+    function listenCloudState() {
+      const { db, firebaseUser, appId } = window.appState;
+      if (!db || !firebaseUser) return;
+      const ref = doc(db, 'artifacts', appId, 'public', 'data', 'dispatch_pwa_state', 'master');
+      onSnapshot(ref, (snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.salesData) window.appState.salesData = d.salesData;
+          if (d.outstandingData) window.appState.outstandingData = d.outstandingData;
+          if (d.followupNotes) window.appState.followupNotes = d.followupNotes;
+          if (d.sharedUsers) window.appState.sharedUsers = d.sharedUsers;
+          if (d.adminEmail) window.appState.adminEmail = d.adminEmail;
+        } else {
+          saveCloudState();
+        }
+        applyAuthEmailRole();
+        renderAll();
+      }, () => renderAll());
+    }
+
+    window.saveCloudState = async function() {
+      const { db, firebaseUser, appId, salesData, outstandingData, followupNotes, sharedUsers, adminEmail } = window.appState;
+      if (!db || !firebaseUser) return;
+      try {
+        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'dispatch_pwa_state', 'master');
+        await setDoc(ref, { adminEmail, salesData, outstandingData, followupNotes, sharedUsers, updatedAt: new Date().toISOString() }, { merge: true });
+      } catch (e) {
+        console.warn('Cloud save skipped:', e);
+      }
+    };
+
+    // --- 3. ROLE & ACCESS CONTROL ---
+    function getProfile() {
+      const sim = window.appState.simulatedRole;
+      if (sim === 'ADMIN') return { isAdmin: true, user: null };
+      const u = window.appState.sharedUsers.find(x => x.id === sim);
+      return u ? { isAdmin: false, user: u } : { isAdmin: true, user: null };
+    }
+
+    function applyAuthEmailRole() {
+      const u = window.appState.firebaseUser;
+      if (!u || !u.email) return;
+      const email = u.email.toLowerCase();
+      if (email === window.appState.adminEmail.toLowerCase()) {
+        window.appState.simulatedRole = 'ADMIN';
+        document.getElementById('unauthorized-screen').classList.add('hidden');
+        return;
+      }
+      const match = window.appState.sharedUsers.find(x => x.email.toLowerCase() === email);
+      if (match) {
+        window.appState.simulatedRole = match.id;
+        document.getElementById('unauthorized-screen').classList.add('hidden');
+      } else {
+        document.getElementById('unauth-email').textContent = u.email;
+        document.getElementById('unauthorized-screen').classList.remove('hidden');
+      }
+    }
+
+    window.switchSimulatedRole = function(roleId) {
+      window.appState.simulatedRole = roleId;
+      document.getElementById('unauthorized-screen').classList.add('hidden');
+      const p = getProfile();
+      if (!p.isAdmin && p.user) {
+        if (!p.user.tabs[window.appState.activeTab]) {
+          window.appState.activeTab = Object.keys(p.user.tabs).find(k => p.user.tabs[k]) || 'dashboard';
+        }
+      }
+      renderAll();
+    };
+
+    // --- 4. DATA LOGIC (30-DAY RULE, AGEING, PRIORITY QUEUE) ---
+    function normKey(v) {
+      return String(v || '').trim().toUpperCase();
+    }
+
+    function getEnrichedBills() {
+      const salesMap = new Map();
+      window.appState.salesData.forEach(s => salesMap.set(normKey(s.billNo), s));
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      let list = window.appState.outstandingData.map(b => {
+        const match = salesMap.get(normKey(b.billNo));
+        const dispatchThrough = b.dispatchThrough || (match ? match.dispatchThrough : 'Not Found in Sales');
+        const lrNo = b.lrNo || (match ? match.lrNo : '-');
+
+        const bd = new Date(b.billDate);
+        const due = new Date(bd);
+        due.setDate(due.getDate() + 30);
+        const dueStr = isNaN(due) ? '-' : due.toISOString().split('T')[0];
+
+        const overdueDays = isNaN(due) ? 0 : Math.floor((today - due) / (1000 * 60 * 60 * 24));
+        let status = 'Not Due';
+        if (overdueDays > 0) status = 'Overdue';
+        else if (overdueDays >= -5) status = 'Due Soon';
+
+        let ageing = '0-30 Days';
+        if (overdueDays > 90) ageing = '90+ Days (Escalation)';
+        else if (overdueDays > 60) ageing = '61-90 Days';
+        else if (overdueDays > 30) ageing = '31-60 Days';
+
+        const isOutside = /courier|tracker/i.test(dispatchThrough);
+        return { ...b, dispatchThrough, lrNo, dueDate: dueStr, overdueDays, status, ageing, isOutside };
+      });
+
+      const p = getProfile();
+      if (!p.isAdmin && p.user) {
+        if (p.user.scope === 'COURIER_ONLY') list = list.filter(x => x.isOutside);
+        else if (p.user.scope === 'SPECIFIC_DISPATCH') list = list.filter(x => (p.user.allowedDispatches || []).includes(x.dispatchThrough));
+      }
+      return list;
+    }
+
+    function getFollowups(bills) {
+      const map = new Map();
+      bills.filter(b => b.isOutside).forEach(b => {
+        if (!map.has(b.partyName)) {
+          map.set(b.partyName, { partyName: b.partyName, totalPending: 0, bills: [], lrs: new Set(), modes: new Set(), maxOverdue: -999 });
+        }
+        const item = map.get(b.partyName);
+        item.totalPending += Number(b.amount || 0);
+        item.bills.push(b.billNo);
+        if (b.lrNo && b.lrNo !== '-') item.lrs.add(b.lrNo);
+        item.modes.add(b.dispatchThrough);
+        if (b.overdueDays > item.maxOverdue) item.maxOverdue = b.overdueDays;
+      });
+
+      const rows = [];
+      map.forEach((v, partyName) => {
+        const note = window.appState.followupNotes[partyName] || {
+          deliveryStatus: 'In Transit',
+          lastCallDate: '',
+          response: '',
+          nextFollowupDate: TODAY_STR
+        };
+        let priorityCode = 'P3';
+        let priorityLabel = '3 - P3 (Upcoming / In Transit)';
+        if (v.totalPending <= 0) {
+          priorityCode = 'CLEARED';
+          priorityLabel = '4 - Cleared';
+        } else if (note.nextFollowupDate && note.nextFollowupDate <= TODAY_STR && v.maxOverdue > 0) {
+          priorityCode = 'P1';
+          priorityLabel = '1 - P1 (Call Today + Overdue)';
+        } else if (note.nextFollowupDate && note.nextFollowupDate <= TODAY_STR) {
+          priorityCode = 'P2';
+          priorityLabel = '2 - P2 (Call Today)';
+        }
+        rows.push({
+          ...v,
+          lrList: Array.from(v.lrs).join(', ') || '-',
+          modeList: Array.from(v.modes).join(', '),
+          note,
+          priorityCode,
+          priorityLabel
+        });
+      });
+
+      const rank = { P1: 1, P2: 2, P3: 3, CLEARED: 4 };
+      return rows.sort((a, b) => rank[a.priorityCode] - rank[b.priorityCode]);
+    }
+
+    function formatINR(n) {
+      return '₹' + Number(n || 0).toLocaleString('en-IN');
+    }
+
+    // --- 5. RENDER FUNCTIONS ---
+    function renderAll() {
+      const p = getProfile();
+      const select = document.getElementById('view-as-select');
+      const cur = window.appState.simulatedRole;
+      select.innerHTML = `<option value="ADMIN">👑 Admin (Full Edit)</option>` +
+        window.appState.sharedUsers.map(u => `<option value="${u.id}">👤 ${u.name}</option>`).join('');
+      select.value = cur;
+
+      const banner = document.getElementById('shared-user-banner');
+      const adminBtns = document.getElementById('admin-quick-actions');
+      const addBillBtn = document.getElementById('btn-add-bill');
+      const importSalesBtn = document.getElementById('btn-import-sales-tab');
+
+      if (p.isAdmin) {
+        banner.classList.add('hidden');
+        adminBtns.classList.remove('hidden');
+        addBillBtn.classList.remove('hidden');
+        importSalesBtn.classList.remove('hidden');
+      } else {
+        banner.classList.remove('hidden');
+        adminBtns.classList.add('hidden');
+        addBillBtn.classList.add('hidden');
+        importSalesBtn.classList.add('hidden');
+        document.getElementById('shared-filter-desc').textContent =
+          p.user.scope === 'COURIER_ONLY' ? 'Courier / Tracker Only' :
+          p.user.scope === 'SPECIFIC_DISPATCH' ? p.user.allowedDispatches.join(', ') : 'All Bills';
+      }
+
+      const tabs = [
+        { id: 'dashboard', label: 'Dashboard', icon: 'layout-dashboard', ok: p.isAdmin || p.user.tabs.dashboard },
+        { id: 'outstanding', label: 'Outstanding', icon: 'file-text', ok: p.isAdmin || p.user.tabs.outstanding },
+        { id: 'followup', label: 'Self Follow-up', icon: 'phone-call', ok: p.isAdmin || p.user.tabs.followup },
+        { id: 'person', label: 'Person Summary', icon: 'users', ok: p.isAdmin || p.user.tabs.person },
+        { id: 'sales', label: 'Sales Register', icon: 'database', ok: p.isAdmin },
+        { id: 'access', label: 'Share & Access', icon: 'shield-check', ok: p.isAdmin }
+      ];
+
+      document.getElementById('main-nav-tabs').innerHTML = tabs.filter(t => t.ok).map(t => {
+        const active = window.appState.activeTab === t.id;
+        return `<button onclick="setActiveTab('${t.id}')" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-t-xl whitespace-nowrap transition ${active ? 'bg-slate-50 text-slate-900' : 'text-slate-300 hover:text-white hover:bg-slate-800/60'}">
+          <i data-lucide="${t.icon}" class="w-3.5 h-3.5 ${active ? 'text-blue-600' : 'text-slate-400'}"></i><span>${t.label}</span>
+        </button>`;
+      }).join('');
+
+      ['dashboard', 'outstanding', 'followup', 'person', 'sales', 'access'].forEach(id => {
+        document.getElementById(`tab-${id}`).classList.toggle('hidden', window.appState.activeTab !== id);
+      });
+
+      const bills = getEnrichedBills();
+      const followups = getFollowups(bills);
+
+      renderDashboard(bills, followups, p);
+      renderOutstandingTable(bills, p);
+      renderFollowupTable(followups, p);
+      renderPersonSummary(bills, p);
+      if (p.isAdmin) {
+        renderSalesTable();
+        renderAccessManager();
+      }
+      lucide.createIcons();
+    }
+
+    window.setActiveTab = function(id) {
+      window.appState.activeTab = id;
+      renderAll();
+    };
+
+    function renderDashboard(bills, followups, p) {
+      const showAmt = p.isAdmin || p.user.showAmount;
+      const totalPending = bills.reduce((s, b) => s + Number(b.amount || 0), 0);
+      const overdue = bills.filter(b => b.status === 'Overdue');
+      const overdueAmt = overdue.reduce((s, b) => s + Number(b.amount || 0), 0);
+      const p12Count = followups.filter(f => f.priorityCode === 'P1' || f.priorityCode === 'P2').length;
+
+      const cards = [
+        { l: 'Total Bills', v: bills.length, s: 'Active receivables', c: 'blue' },
+        { l: 'Pending Amt', v: showAmt ? formatINR(totalPending) : '🔒', s: 'Total balance', c: 'indigo' },
+        { l: 'Overdue (>30d)', v: showAmt ? formatINR(overdueAmt) : overdue.length, s: `${overdue.length} overdue bills`, c: 'rose' },
+        { l: 'Outside Parties', v: bills.filter(b => b.isOutside).length, s: 'Courier / Tracker', c: 'purple' },
+        { l: 'Priority Calls', v: p12Count, s: 'P1 & P2 today', c: 'amber' },
+        { l: 'Role Mode', v: p.isAdmin ? 'Admin' : 'Shared', s: p.isAdmin ? 'Full edit' : 'Limited view', c: 'emerald' }
+      ];
+
+      document.getElementById('kpi-cards-grid').innerHTML = cards.map(x => `
+        <div class="bg-white rounded-2xl border border-slate-200 p-3.5 shadow-sm">
+          <p class="text-[11px] font-semibold text-slate-500">${x.l}</p>
+          <p class="text-lg font-extrabold text-slate-900 mt-1">${x.v}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">${x.s}</p>
+        </div>
+      `).join('');
+
+      const slabs = ['0-30 Days', '31-60 Days', '61-90 Days', '90+ Days (Escalation)'];
+      const colors = ['bg-emerald-500', 'bg-amber-500', 'bg-orange-500', 'bg-rose-600'];
+      const maxAmt = Math.max(totalPending, 1);
+
+      document.getElementById('ageing-bars-container').innerHTML = slabs.map((sl, idx) => {
+        const grp = bills.filter(b => b.ageing === sl);
+        const amt = grp.reduce((s, b) => s + Number(b.amount || 0), 0);
+        const pct = Math.round((amt / maxAmt) * 100);
+        return `<div>
+          <div class="flex justify-between text-xs mb-1">
+            <span class="font-semibold text-slate-700">${sl} <span class="text-slate-400">(${grp.length})</span></span>
+            <span class="font-bold text-slate-900">${showAmt ? formatINR(amt) : pct + '%'}</span>
+          </div>
+          <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div class="${colors[idx]} h-full rounded-full" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+      }).join('');
+
+      const top = followups.filter(f => f.priorityCode !== 'CLEARED').slice(0, 5);
+      document.getElementById('dashboard-priority-tbody').innerHTML = top.length ? top.map(f => {
+        const bCls = f.priorityCode === 'P1' ? 'bg-rose-100 text-rose-700' : f.priorityCode === 'P2' ? 'bg-amber-100 text-amber-800' : 'bg-blue-50 text-blue-700';
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-2 px-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${bCls}">${f.priorityCode}</span></td>
+          <td class="py-2 px-3 font-semibold text-slate-800">${f.partyName}</td>
+          <td class="py-2 px-3 text-slate-500">${f.modeList} (${f.lrList})</td>
+          <td class="py-2 px-3 text-right font-bold">${showAmt ? formatINR(f.totalPending) : '🔒'}</td>
+          <td class="py-2 px-3 text-right">
+            <button onclick="sendWhatsApp('${encodeURIComponent(f.partyName)}')" class="px-2 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold">WhatsApp</button>
+          </td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="5" class="py-5 text-center text-slate-400">No outside follow-ups in this view.</td></tr>`;
+    }
+
+    window.renderOutstandingTable = function(preBills, preProfile) {
+      const p = preProfile || getProfile();
+      const bills = preBills || getEnrichedBills();
+      const showAmt = p.isAdmin || p.user.showAmount;
+
+      const dSel = document.getElementById('out-dispatch-filter');
+      const prevD = dSel.value;
+      const dispatches = [...new Set(bills.map(b => b.dispatchThrough))];
+      dSel.innerHTML = `<option value="ALL">All Dispatch</option>` + dispatches.map(d => `<option value="${d}">${d}</option>`).join('');
+      if (dispatches.includes(prevD)) dSel.value = prevD;
+
+      const q = (document.getElementById('out-search').value || '').toLowerCase();
+      const st = document.getElementById('out-status-filter').value;
+      const df = dSel.value;
+
+      const rows = bills.filter(b =>
+        (!q || b.partyName.toLowerCase().includes(q) || b.billNo.toLowerCase().includes(q) || b.lrNo.toLowerCase().includes(q)) &&
+        (st === 'ALL' || b.status === st) &&
+        (df === 'ALL' || b.dispatchThrough === df)
+      );
+
+      document.querySelectorAll('.admin-only-col').forEach(el => el.classList.toggle('hidden', !p.isAdmin));
+
+      document.getElementById('outstanding-tbody').innerHTML = rows.length ? rows.map(b => {
+        const badge = b.status === 'Overdue' ? 'bg-rose-100 text-rose-700' : b.status === 'Due Soon' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700';
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-2.5 px-3 whitespace-nowrap text-slate-600">${b.billDate}</td>
+          <td class="py-2.5 px-3 whitespace-nowrap font-bold text-slate-900">${b.billNo}</td>
+          <td class="py-2.5 px-3 font-medium text-slate-800">${b.partyName}</td>
+          <td class="py-2.5 px-3 text-right font-bold">${showAmt ? formatINR(b.amount) : '🔒'}</td>
+          <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded-lg text-[11px] font-medium ${b.isOutside ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-700'}">${b.dispatchThrough}</span></td>
+          <td class="py-2.5 px-3 font-mono text-[11px] text-slate-600">${b.lrNo}</td>
+          <td class="py-2.5 px-3 whitespace-nowrap text-slate-600">${b.dueDate}</td>
+          <td class="py-2.5 px-3 text-center font-bold ${b.overdueDays > 0 ? 'text-rose-600' : 'text-slate-500'}">${b.overdueDays > 0 ? '+' + b.overdueDays + 'd' : b.overdueDays + 'd'}</td>
+          <td class="py-2.5 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${badge}">${b.status}</span></td>
+          <td class="py-2.5 px-3 whitespace-nowrap text-[11px] text-slate-600">${b.ageing}</td>
+          ${p.isAdmin ? `<td class="py-2.5 px-3 text-center"><button onclick="markPaid('${b.id}')" class="px-2 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white text-[11px] font-semibold">✓ Paid</button></td>` : ''}
+        </tr>`;
+      }).join('') : `<tr><td colspan="11" class="py-6 text-center text-slate-400">No bills found.</td></tr>`;
+    };
+
+    window.renderFollowupTable = function(preFu, preProfile) {
+      const p = preProfile || getProfile();
+      const rows = preFu || getFollowups(getEnrichedBills());
+      const showAmt = p.isAdmin || p.user.showAmount;
+      const showRem = p.isAdmin || p.user.showRemarks;
+      const canEdit = p.isAdmin || (p.user && p.user.roleType === 'REMARK_ONLY');
+
+      const q = (document.getElementById('fu-search').value || '').toLowerCase();
+      const pr = document.getElementById('fu-priority-filter').value;
+      const filtered = rows.filter(f => (!q || f.partyName.toLowerCase().includes(q) || f.lrList.toLowerCase().includes(q)) && (pr === 'ALL' || f.priorityCode === pr));
+
+      document.getElementById('followup-tbody').innerHTML = filtered.length ? filtered.map((f, i) => {
+        const pCls = f.priorityCode === 'P1' ? 'bg-rose-100 text-rose-700' : f.priorityCode === 'P2' ? 'bg-amber-100 text-amber-800' : f.priorityCode === 'P3' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-100 text-emerald-700';
+        const enc = encodeURIComponent(f.partyName);
+        return `<tr class="hover:bg-slate-50 align-top">
+          <td class="py-2.5 px-3 whitespace-nowrap"><span class="px-2 py-0.5 rounded-lg text-[10px] font-bold ${pCls}">${f.priorityLabel}</span></td>
+          <td class="py-2.5 px-3"><div class="font-bold text-slate-900">${f.partyName}</div><div class="text-[11px] text-slate-400">${f.bills.join(', ')}</div></td>
+          <td class="py-2.5 px-3 text-right font-bold">${showAmt ? formatINR(f.totalPending) : '🔒'}</td>
+          <td class="py-2.5 px-3"><div class="text-purple-700 font-medium">${f.modeList}</div><div class="font-mono text-[11px] text-slate-500">${f.lrList}</div></td>
+          <td class="py-2.5 px-3 text-center font-bold ${f.maxOverdue > 0 ? 'text-rose-600' : 'text-slate-500'}">${f.maxOverdue > 0 ? '+' + f.maxOverdue + 'd' : f.maxOverdue + 'd'}</td>
+          <td class="py-2.5 px-3">
+            <select id="fu-del-${i}" ${!canEdit ? 'disabled' : ''} class="px-2 py-1 border border-slate-300 rounded-lg text-xs bg-white disabled:bg-slate-100">
+              ${['In Transit', 'Delivered', 'Delayed / Issue', 'Confirmed'].map(s => `<option value="${s}" ${f.note.deliveryStatus === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </td>
+          <td class="py-2.5 px-3 min-w-[200px]">
+            ${showRem ? `<textarea id="fu-resp-${i}" rows="2" ${!canEdit ? 'disabled' : ''} class="w-full px-2 py-1 border border-slate-300 rounded-lg text-xs disabled:bg-slate-100">${f.note.response || ''}</textarea>` : `<span class="text-slate-400 italic">🔒 Hidden</span>`}
+          </td>
+          <td class="py-2.5 px-3"><input type="date" id="fu-next-${i}" value="${f.note.nextFollowupDate || ''}" ${!canEdit ? 'disabled' : ''} class="px-2 py-1 border border-slate-300 rounded-lg text-xs disabled:bg-slate-100"></td>
+          <td class="py-2.5 px-3 text-center space-y-1">
+            ${canEdit ? `<button onclick="saveNote('${enc}', ${i})" class="w-full px-2 py-1 rounded-lg bg-blue-600 text-white text-[11px] font-semibold">Save</button>` : ''}
+            <button onclick="sendWhatsApp('${enc}')" class="w-full px-2 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-semibold">WhatsApp</button>
+          </td>
+        </tr>`;
+      }).join('') : `<tr><td colspan="9" class="py-6 text-center text-slate-400">No follow-up rows found.</td></tr>`;
+    };
+
+    function renderPersonSummary(bills, p) {
+      const showAmt = p.isAdmin || p.user.showAmount;
+      const map = new Map();
+      bills.forEach(b => {
+        if (!map.has(b.dispatchThrough)) map.set(b.dispatchThrough, { name: b.dispatchThrough, isOutside: b.isOutside, count: 0, amt: 0, ovCount: 0, ovAmt: 0 });
+        const r = map.get(b.dispatchThrough);
+        r.count += 1;
+        r.amt += Number(b.amount || 0);
+        if (b.status === 'Overdue') { r.ovCount += 1; r.ovAmt += Number(b.amount || 0); }
+      });
+
+      document.getElementById('person-summary-tbody').innerHTML = Array.from(map.values()).map(r => {
+        const pct = r.amt > 0 ? Math.round((r.ovAmt / r.amt) * 100) : 0;
+        return `<tr class="hover:bg-slate-50">
+          <td class="py-3 px-4 font-bold text-slate-900">${r.name}</td>
+          <td class="py-3 px-4"><span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${r.isOutside ? 'bg-purple-100 text-purple-700' : 'bg-blue-50 text-blue-700'}">${r.isOutside ? 'Courier / Tracker' : 'Sales Person'}</span></td>
+          <td class="py-3 px-4 text-center font-semibold">${r.count}</td>
+          <td class="py-3 px-4 text-right font-bold">${showAmt ? formatINR(r.amt) : '🔒'}</td>
+          <td class="py-3 px-4 text-center font-bold text-rose-600">${r.ovCount}</td>
+          <td class="py-3 px-4 text-right font-bold text-rose-600">${showAmt ? formatINR(r.ovAmt) : '🔒'}</td>
+          <td class="py-3 px-4 text-right font-semibold">${pct}%</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderSalesTable() {
+      document.getElementById('sales-tbody').innerHTML = window.appState.salesData.map(s => `<tr class="hover:bg-slate-50">
+        <td class="py-2.5 px-4 text-slate-600">${s.billDate}</td>
+        <td class="py-2.5 px-4 font-bold text-slate-900">${s.billNo}</td>
+        <td class="py-2.5 px-4">${s.partyName}</td>
+        <td class="py-2.5 px-4 text-blue-700 font-medium">${s.dispatchThrough}</td>
+        <td class="py-2.5 px-4 font-mono text-[11px]">${s.lrNo}</td>
+        <td class="py-2.5 px-4 text-right font-semibold">${formatINR(s.amount)}</td>
+      </tr>`).join('');
+    }
+
+    function renderAccessManager() {
+      const names = new Set(window.appState.salesData.map(s => s.dispatchThrough));
+      document.getElementById('dispatch-checkboxes').innerHTML = Array.from(names).map(n => `
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" value="${n}" class="dispatch-cb rounded text-blue-600"><span>${n}</span></label>
+      `).join('');
+
+      document.getElementById('shared-users-list').innerHTML = window.appState.sharedUsers.map(u => {
+        const scopeLabel = u.scope === 'COURIER_ONLY' ? 'Only Courier / Tracker' : u.scope === 'SPECIFIC_DISPATCH' ? u.allowedDispatches.join(', ') : 'All Bills';
+        return `<div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div class="font-bold text-slate-900 text-xs">${u.name} <span class="ml-1 px-2 py-0.5 rounded bg-slate-200 text-slate-700 text-[10px]">${u.roleType}</span></div>
+            <p class="text-[11px] text-slate-500">${u.email} • Scope: <strong>${scopeLabel}</strong></p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button onclick="switchSimulatedRole('${u.id}')" class="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-semibold">Preview</button>
+            <button onclick="revokeUser('${u.id}')" class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white text-[11px] font-semibold">Revoke</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    window.toggleDispatchCheckboxList = function() {
+      document.getElementById('dispatch-checkbox-container').classList.toggle('hidden', document.getElementById('share-data-scope').value !== 'SPECIFIC_DISPATCH');
+    };
+
+    window.saveSharedUser = function() {
+      const name = document.getElementById('share-name').value.trim();
+      const email = document.getElementById('share-email').value.trim();
+      if (!name || !email) { showToast('Name aur Email bharein.', 'error'); return; }
+
+      const scope = document.getElementById('share-data-scope').value;
+      const allowedDispatches = Array.from(document.querySelectorAll('.dispatch-cb:checked')).map(c => c.value);
+      if (scope === 'SPECIFIC_DISPATCH' && !allowedDispatches.length) {
+        showToast('Kam se kam ek Dispatch Through select karein.', 'error');
+        return;
+      }
+
+      window.appState.sharedUsers.push({
+        id: 'u_' + Date.now(),
+        name,
+        email,
+        roleType: document.getElementById('share-role-type').value,
+        scope,
+        allowedDispatches,
+        tabs: {
+          dashboard: document.getElementById('perm-tab-dashboard').checked,
+          outstanding: document.getElementById('perm-tab-outstanding').checked,
+          followup: document.getElementById('perm-tab-followup').checked,
+          person: document.getElementById('perm-tab-person').checked
+        },
+        showAmount: document.getElementById('perm-col-amount').checked,
+        showRemarks: document.getElementById('perm-col-remarks').checked
+      });
+
+      document.getElementById('share-name').value = '';
+      document.getElementById('share-email').value = '';
+      saveCloudState();
+      renderAll();
+      showToast(`Access shared with ${name}`, 'success');
+    };
+
+    window.revokeUser = function(id) {
+      window.appState.sharedUsers = window.appState.sharedUsers.filter(u => u.id !== id);
+      saveCloudState();
+      renderAll();
+      showToast('Access revoked.', 'info');
+    };
+
+    // --- 6. ACTIONS, EXCEL IMPORT/EXPORT, WHATSAPP ---
+    window.saveNote = function(enc, idx) {
+      const party = decodeURIComponent(enc);
+      const del = document.getElementById(`fu-del-${idx}`).value;
+      const respEl = document.getElementById(`fu-resp-${idx}`);
+      const next = document.getElementById(`fu-next-${idx}`).value;
+      const prev = window.appState.followupNotes[party] || {};
+
+      window.appState.followupNotes[party] = {
+        deliveryStatus: del,
+        lastCallDate: TODAY_STR,
+        response: respEl ? respEl.value : (prev.response || ''),
+        nextFollowupDate: next
+      };
+      saveCloudState();
+      renderAll();
+      showToast(`Saved note for ${party}`, 'success');
+    };
+
+    window.sendWhatsApp = function(enc) {
+      const party = decodeURIComponent(enc);
+      const matches = getEnrichedBills().filter(b => b.partyName === party);
+      const amt = matches.reduce((s, b) => s + Number(b.amount || 0), 0);
+      const bills = matches.map(b => b.billNo).join(', ') || 'Pending';
+      const lrs = matches.map(b => b.lrNo).filter(x => x && x !== '-').join(', ') || 'Courier/Tracker';
+      const msg = `Namaste *${party}*,\nAapke Bill *${bills}* (Pending: *${formatINR(amt)}*) ki 30-din ki credit avadhi poori ho chuki hai.\nDispatch / LR: *${lrs}*.\nKripya payment detail share karein. Dhanyawad!`;
+
+      const ta = document.createElement('textarea');
+      ta.value = msg;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+
+      showToast('Reminder copied! Opening WhatsApp...', 'success');
+      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+    };
+
+    window.markPaid = function(id) {
+      if (!getProfile().isAdmin) return;
+      window.appState.outstandingData = window.appState.outstandingData.filter(b => b.id !== id);
+      saveCloudState();
+      renderAll();
+      showToast('Bill marked Paid.', 'success');
+    };
+
+    window.openAddBillModal = function() {
+      document.getElementById('new-bill-date').value = TODAY_STR;
+      document.getElementById('add-bill-modal').classList.remove('hidden');
+    };
+
+    window.saveSingleBill = function() {
+      if (!getProfile().isAdmin) return;
+      const billDate = document.getElementById('new-bill-date').value;
+      const billNo = document.getElementById('new-bill-no').value.trim();
+      const partyName = document.getElementById('new-bill-party').value.trim();
+      const amount = Number(document.getElementById('new-bill-amount').value || 0);
+      const dispatchThrough = document.getElementById('new-bill-dispatch').value.trim();
+      const lrNo = document.getElementById('new-bill-lr').value.trim();
+
+      if (!billNo || !partyName || !amount) { showToast('Bill No, Party aur Amount zaroori hain.', 'error'); return; }
+      window.appState.outstandingData.unshift({ id: 'b_' + Date.now(), billDate, billNo, partyName, amount, dispatchThrough: dispatchThrough || undefined, lrNo: lrNo || undefined });
+      if (dispatchThrough) {
+        window.appState.salesData.unshift({ billDate, billNo, partyName, dispatchThrough, lrNo: lrNo || '-', amount });
+      }
+      closeModal('add-bill-modal');
+      saveCloudState();
+      renderAll();
+      showToast('Bill added!', 'success');
+    };
+
+    window.openImportModal = function() {
+      if (getProfile().isAdmin) document.getElementById('import-modal').classList.remove('hidden');
+    };
+
+    window.handleExcelUpload = function(ev, type) {
+      if (!getProfile().isAdmin) return;
+      const file = ev.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+          if (!rows.length) { showToast('Empty file.', 'error'); return; }
+
+          if (type === 'OUTSTANDING') {
+            const parsed = [];
+            rows.forEach((r, idx) => {
+              const keys = Object.keys(r);
+              const find = (arr) => { const k = keys.find(x => arr.some(p => x.toLowerCase().includes(p))); return k ? r[k] : ''; };
+              const billNo = String(find(['bill', 'ref', 'voucher', 'invoice'])).trim();
+              const partyName = String(find(['party', 'particular', 'customer', 'name'])).trim();
+              const amount = Math.abs(Number(String(find(['pending', 'amount', 'balance', 'closing'])).replace(/[^0-9.-]/g, '') || 0));
+              let billDate = TODAY_STR;
+              const rawD = find(['date']);
+              if (typeof rawD === 'number') {
+                const d = XLSX.SSF.parse_date_code(rawD);
+                if (d) billDate = `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+              } else if (rawD) {
+                const pd = new Date(rawD);
+                if (!isNaN(pd)) billDate = pd.toISOString().split('T')[0];
+              }
+              if (billNo && partyName && !/total/i.test(partyName)) {
+                parsed.push({ id: `imp_${Date.now()}_${idx}`, billDate, billNo, partyName, amount });
+              }
+            });
+            if (parsed.length) {
+              window.appState.outstandingData = parsed;
+              saveCloudState();
+              renderAll();
+              closeModal('import-modal');
+              showToast(`${parsed.length} bills imported!`, 'success');
+            }
+          } else {
+            const map = new Map(window.appState.salesData.map(s => [normKey(s.billNo), s]));
+            let count = 0;
+            rows.forEach(r => {
+              const keys = Object.keys(r);
+              const find = (arr) => { const k = keys.find(x => arr.some(p => x.toLowerCase().includes(p))); return k ? r[k] : ''; };
+              const billNo = String(find(['voucher', 'bill', 'invoice', 'ref'])).trim();
+              const dispatchThrough = String(find(['dispatch', 'through', 'salesperson', 'agent'])).trim();
+              const lrNo = String(find(['lr', 'docket', 'track', 'rr'])).trim() || '-';
+              const partyName = String(find(['party', 'particular', 'customer'])).trim();
+              const amount = Math.abs(Number(String(find(['amount', 'gross', 'total'])).replace(/[^0-9.-]/g, '') || 0));
+              if (billNo && dispatchThrough && !/total/i.test(billNo)) {
+                map.set(normKey(billNo), { billDate: TODAY_STR, billNo, partyName, dispatchThrough, lrNo, amount });
+                count++;
+              }
+            });
+            if (count) {
+              window.appState.salesData = Array.from(map.values());
+              saveCloudState();
+              renderAll();
+              closeModal('import-modal');
+              showToast(`${count} sales dispatch rows synced!`, 'success');
+            }
+          }
+        } catch (err) {
+          showToast('Error reading Excel file.', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    };
+
+    window.exportAllToExcel = function() {
+      const bills = getEnrichedBills();
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(bills.map(b => ({
+        Bill_Date: b.billDate,
+        Bill_No: b.billNo,
+        Party_Name: b.partyName,
+        Pending_INR: b.amount,
+        Dispatch_Through: b.dispatchThrough,
+        LR_No: b.lrNo,
+        Due_Date_30d: b.dueDate,
+        Overdue_Days: b.overdueDays,
+        Status: b.status,
+        Ageing: b.ageing
+      })));
+      XLSX.utils.book_append_sheet(wb, ws, 'Daily_Outstanding');
+      XLSX.writeFile(wb, `Dispatch_PWA_Report_${TODAY_STR}.xlsx`);
+      showToast('Excel exported!', 'success');
+    };
+
+    window.resetToSampleData = function() {
+      if (!getProfile().isAdmin) return;
+      window.appState.salesData = [...DEFAULT_SALES];
+      window.appState.outstandingData = [...DEFAULT_OUTSTANDING];
+      window.appState.followupNotes = { ...DEFAULT_FOLLOWUPS };
+      saveCloudState();
+      renderAll();
+      closeModal('import-modal');
+      showToast('Sample data loaded!', 'success');
+    };
+
+    window.copyShareUrl = function() {
+      const el = document.getElementById('share-url-input');
+      el.value = window.location.href;
+      el.select();
+      document.execCommand('copy');
+      showToast('Link copied!', 'success');
+    };
+
+    window.openAuthModal = function() { document.getElementById('auth-modal').classList.remove('hidden'); };
+    window.openPwaGuideModal = function() { document.getElementById('pwa-guide-modal').classList.remove('hidden'); };
+    window.closeModal = function(id) { document.getElementById(id).classList.add('hidden'); };
+
+    window.handleEmailAuth = async function(mode) {
+      const { auth } = window.appState;
+      if (!auth) { showToast('Offline mode active.', 'info'); return; }
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-password').value;
+      if (!email || pass.length < 6) { showToast('Email aur 6+ char password daalein.', 'error'); return; }
+      try {
+        if (mode === 'signup') {
+          await createUserWithEmailAndPassword(auth, email, pass);
+          window.appState.adminEmail = email;
+          await saveCloudState();
+          showToast('Admin registered!', 'success');
+        } else {
+          await signInWithEmailAndPassword(auth, email, pass);
+          showToast('Signed in!', 'success');
+        }
+        closeModal('auth-modal');
+      } catch (e) {
+        showToast(e.message, 'error');
+      }
+    };
+
+    window.logoutFirebase = async function() {
+      if (window.appState.auth) {
+        await signOut(window.appState.auth);
+        await signInAnonymously(window.appState.auth);
+      }
+      window.appState.simulatedRole = 'ADMIN';
+      document.getElementById('unauthorized-screen').classList.add('hidden');
+      renderAll();
+    };
+
+    window.showToast = function(msg, type = 'info') {
+      const box = document.getElementById('toast-container');
+      const cls = type === 'success' ? 'bg-emerald-600 text-white' : type === 'error' ? 'bg-rose-600 text-white' : 'bg-slate-900 text-white';
+      const el = document.createElement('div');
+      el.className = `${cls} px-4 py-2.5 rounded-xl shadow-lg text-xs font-semibold pointer-events-auto transition-opacity`;
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }, 2800);
+    };
+
+    window.onload = function() {
+      setupPwaManifestAndSw();
+      initCloud();
+    };
+  </script>
+</body>
+</html>
